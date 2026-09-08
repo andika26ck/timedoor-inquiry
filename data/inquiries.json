@@ -1,0 +1,141 @@
+[
+  {
+    "id": "inq-001", "branch": "HQ Training", "studentName": "Jim Low Lap Hong", "parentName": "MY ON", "source": "OTHER ADMIN",
+    "country": "Malaysia", "phoneCode": "+60", "phoneNumber": "123456001", "inquiryDate": "2026-08-01",
+    "socialMedia": "", "contactNote": "", "stage": "registered", "reasonCode": "A",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "System", "at": "2026-08-01T09:10:00+08:00", "note": "Imported" },
+      { "from": "new", "to": "in_progress", "reasonCode": null, "by": "Andika", "at": "2026-08-02T10:00:00+08:00", "note": "" },
+      { "from": "in_progress", "to": "registered", "reasonCode": "A", "by": "Andika", "at": "2026-08-04T14:20:00+08:00", "note": "Registered to trial class" }
+    ]
+  },
+  {
+    "id": "inq-002", "branch": "HQ Training", "studentName": "Isaac Hsu Li-Hang", "parentName": "MY ON", "source": "OTHER ADMIN",
+    "country": "Malaysia", "phoneCode": "+60", "phoneNumber": "123456002", "inquiryDate": "2026-08-01",
+    "socialMedia": "", "contactNote": "", "stage": "registered", "reasonCode": "A",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "System", "at": "2026-08-01T09:12:00+08:00", "note": "Imported" },
+      { "from": "new", "to": "registered", "reasonCode": "A", "by": "Andika", "at": "2026-08-03T11:00:00+08:00", "note": "" }
+    ]
+  },
+  {
+    "id": "inq-003", "branch": "HQ Training", "studentName": "Ilhan Kamil", "parentName": "MY ON", "source": "OTHER ADMIN",
+    "country": "Malaysia", "phoneCode": "+60", "phoneNumber": "123456003", "inquiryDate": "2026-08-01",
+    "socialMedia": "", "contactNote": "", "stage": "registered", "reasonCode": "A",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "System", "at": "2026-08-01T09:13:00+08:00", "note": "Imported" },
+      { "from": "new", "to": "registered", "reasonCode": "A", "by": "Andika", "at": "2026-08-03T12:00:00+08:00", "note": "" }
+    ]
+  },
+  {
+    "id": "inq-004", "branch": "HQ Training", "studentName": "Nurul Bazzaziyah binti Yusoff", "parentName": "MY ON", "source": "OTHER ADMIN",
+    "country": "Malaysia", "phoneCode": "+60", "phoneNumber": "123456004", "inquiryDate": "2026-08-01",
+    "socialMedia": "", "contactNote": "", "stage": "waiting", "reasonCode": "B",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "System", "at": "2026-08-01T09:14:00+08:00", "note": "Imported" },
+      { "from": "new", "to": "in_progress", "reasonCode": null, "by": "Andika", "at": "2026-08-05T09:00:00+08:00", "note": "" },
+      { "from": "in_progress", "to": "waiting", "reasonCode": "B", "by": "Andika", "at": "2026-08-06T16:00:00+08:00", "note": "Parent wants to discuss with family first" }
+    ]
+  },
+  {
+    "id": "inq-005", "branch": "HQ Training", "studentName": "Fathulloh", "parentName": "UZ FC", "source": "OTHER ADMIN",
+    "country": "Uzbekistan", "phoneCode": "+998", "phoneNumber": "901112233", "inquiryDate": "2026-08-01",
+    "socialMedia": "", "contactNote": "", "stage": "registered", "reasonCode": "A",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "System", "at": "2026-08-01T09:15:00+08:00", "note": "Imported" },
+      { "from": "new", "to": "registered", "reasonCode": "A", "by": "Andika", "at": "2026-08-04T10:30:00+08:00", "note": "" }
+    ]
+  },
+  {
+    "id": "inq-006", "branch": "HQ Training", "studentName": "Sasuke", "parentName": "Uchiha", "source": "WALK IN",
+    "country": "Philippines", "phoneCode": "+63", "phoneNumber": "099712321123", "inquiryDate": "2026-08-18",
+    "socialMedia": "", "contactNote": "Interested in Saturday class", "stage": "in_progress", "reasonCode": null,
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "Andika", "at": "2026-08-18T13:00:00+08:00", "note": "Walk-in" },
+      { "from": "new", "to": "in_progress", "reasonCode": null, "by": "Andika", "at": "2026-08-19T09:30:00+08:00", "note": "Sent price list" }
+    ]
+  },
+  {
+    "id": "inq-007", "branch": "HQ Training", "studentName": "Muzan", "parentName": "Tanjiro", "source": "WALK IN",
+    "country": "Indonesia", "phoneCode": "+62", "phoneNumber": "89999900001", "inquiryDate": "2026-08-18",
+    "socialMedia": "", "contactNote": "", "stage": "no_response", "reasonCode": "C3",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "Andika", "at": "2026-08-18T14:00:00+08:00", "note": "" },
+      { "from": "new", "to": "in_progress", "reasonCode": null, "by": "Andika", "at": "2026-08-19T10:00:00+08:00", "note": "" },
+      { "from": "in_progress", "to": "no_response", "reasonCode": "C3", "by": "Andika", "at": "2026-08-24T17:00:00+08:00", "note": "Sent price, no reply after 3 follow ups" }
+    ]
+  },
+  {
+    "id": "inq-008", "branch": "HQ Training", "studentName": "Adam", "parentName": "Zeny", "source": "WALK IN",
+    "country": "Philippines", "phoneCode": "+63", "phoneNumber": "9060182075", "inquiryDate": "2026-08-18",
+    "socialMedia": "zeny bacongco", "contactNote": "", "stage": "in_progress", "reasonCode": null,
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "Andika", "at": "2026-08-18T15:00:00+08:00", "note": "" },
+      { "from": "new", "to": "in_progress", "reasonCode": null, "by": "Andika", "at": "2026-08-20T11:00:00+08:00", "note": "Chatting on Messenger" }
+    ]
+  },
+  {
+    "id": "inq-009", "branch": "HQ Training", "studentName": "Adhwa", "parentName": "Tammy", "source": "WA",
+    "country": "Indonesia", "phoneCode": "+62", "phoneNumber": "81213694239", "inquiryDate": "2026-08-18",
+    "socialMedia": "", "contactNote": "", "stage": "registered", "reasonCode": "A",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "Andika", "at": "2026-08-18T16:00:00+08:00", "note": "" },
+      { "from": "new", "to": "registered", "reasonCode": "A", "by": "Andika", "at": "2026-08-21T13:00:00+08:00", "note": "" }
+    ]
+  },
+  {
+    "id": "inq-010", "branch": "HQ Training", "studentName": "Dewa", "parentName": "Dewa's Dad", "source": "WA",
+    "country": "Indonesia", "phoneCode": "+62", "phoneNumber": "81231241441", "inquiryDate": "2026-08-19",
+    "socialMedia": "", "contactNote": "", "stage": "issue", "reasonCode": "D2",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "Andika", "at": "2026-08-19T09:00:00+08:00", "note": "" },
+      { "from": "new", "to": "in_progress", "reasonCode": null, "by": "Andika", "at": "2026-08-20T09:00:00+08:00", "note": "" },
+      { "from": "in_progress", "to": "issue", "reasonCode": "D2", "by": "Andika", "at": "2026-08-22T15:30:00+08:00", "note": "Branch too far from home" }
+    ]
+  },
+  {
+    "id": "inq-011", "branch": "HQ Training", "studentName": "Nadia", "parentName": "Nadia's Mom", "source": "Website",
+    "country": "Indonesia", "phoneCode": "+62", "phoneNumber": "81366677788", "inquiryDate": "2026-09-01",
+    "socialMedia": "", "contactNote": "", "stage": "no_response", "reasonCode": "C1",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "System", "at": "2026-09-01T08:00:00+08:00", "note": "Web form" },
+      { "from": "new", "to": "no_response", "reasonCode": "C1", "by": "Andika", "at": "2026-09-03T18:00:00+08:00", "note": "First reply not read" }
+    ]
+  },
+  {
+    "id": "inq-012", "branch": "HQ Training", "studentName": "Rizky", "parentName": "Rizky's Parent", "source": "WA",
+    "country": "Indonesia", "phoneCode": "+62", "phoneNumber": "81355501122", "inquiryDate": "2026-09-02",
+    "socialMedia": "", "contactNote": "", "stage": "no_response", "reasonCode": "C5",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "Andika", "at": "2026-09-02T10:00:00+08:00", "note": "" },
+      { "from": "new", "to": "in_progress", "reasonCode": null, "by": "Andika", "at": "2026-09-03T10:00:00+08:00", "note": "Asked for trial data" },
+      { "from": "in_progress", "to": "no_response", "reasonCode": "C5", "by": "Andika", "at": "2026-09-06T12:00:00+08:00", "note": "No trial data sent" }
+    ]
+  },
+  {
+    "id": "inq-013", "branch": "HQ Training", "studentName": "Joker", "parentName": "-", "source": "WALK IN",
+    "country": "Indonesia", "phoneCode": "+62", "phoneNumber": "81000000000", "inquiryDate": "2026-09-03",
+    "socialMedia": "", "contactNote": "Not serious", "stage": "disqualified", "reasonCode": "E2",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "Andika", "at": "2026-09-03T11:00:00+08:00", "note": "" },
+      { "from": "new", "to": "disqualified", "reasonCode": "E2", "by": "Andika", "at": "2026-09-03T11:30:00+08:00", "note": "Prank inquiry" }
+    ]
+  },
+  {
+    "id": "inq-014", "branch": "HQ Training", "studentName": "Oscar", "parentName": "Oscar's Dad", "source": "Referral",
+    "country": "Singapore", "phoneCode": "+65", "phoneNumber": "91234567", "inquiryDate": "2026-09-04",
+    "socialMedia": "", "contactNote": "", "stage": "others", "reasonCode": "F1",
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "Andika", "at": "2026-09-04T09:00:00+08:00", "note": "" },
+      { "from": "new", "to": "others", "reasonCode": "F1", "by": "Andika", "at": "2026-09-05T10:00:00+08:00", "note": "Asking about franchise, not a student" }
+    ]
+  },
+  {
+    "id": "inq-015", "branch": "HQ Training", "studentName": "Kaka", "parentName": "Kaka's Mom", "source": "Instagram",
+    "country": "Indonesia", "phoneCode": "+62", "phoneNumber": "81277788899", "inquiryDate": "2026-09-06",
+    "socialMedia": "kaka.mom", "contactNote": "", "stage": "new", "reasonCode": null,
+    "history": [
+      { "from": null, "to": "new", "reasonCode": null, "by": "System", "at": "2026-09-06T08:30:00+08:00", "note": "DM inquiry" }
+    ]
+  }
+]

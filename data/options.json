@@ -1,0 +1,11 @@
+{
+  "branches": ["HQ Training", "Bali Branch", "Surabaya Branch", "Jakarta Branch"],
+  "sources": ["WALK IN", "WA", "OTHER ADMIN", "Instagram", "Website", "Referral", "MY ON", "UZ FC"],
+  "countries": [
+    { "name": "Indonesia", "phoneCode": "+62", "iso": "ID", "flag": "\uD83C\uDDEE\uD83C\uDDE9" },
+    { "name": "Malaysia", "phoneCode": "+60", "iso": "MY", "flag": "\uD83C\uDDF2\uD83C\uDDFE" },
+    { "name": "Philippines", "phoneCode": "+63", "iso": "PH", "flag": "\uD83C\uDDF5\uD83C\uDDED" },
+    { "name": "Singapore", "phoneCode": "+65", "iso": "SG", "flag": "\uD83C\uDDF8\uD83C\uDDEC" },
+    { "name": "Uzbekistan", "phoneCode": "+998", "iso": "UZ", "flag": "\uD83C\uDDFA\uD83C\uDDFF" }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "stages": [
+    { "key": "new", "label": "New", "code": null, "color": "#3B82F6", "requiresReason": false, "active": true, "description": "Just came in, not contacted yet" },
+    { "key": "in_progress", "label": "In Progress", "code": null, "color": "#6366F1", "requiresReason": false, "active": true, "description": "Being worked / in conversation" },
+    { "key": "waiting", "label": "Waiting", "code": "B", "color": "#F59E0B", "requiresReason": false, "active": true, "autoReason": "B", "description": "Ball is in the customer's court" },
+    { "key": "registered", "label": "Registered", "code": "A", "color": "#22C55E", "requiresReason": false, "won": true, "autoReason": "A", "description": "Won \u2014 registered to trial" },
+    { "key": "no_response", "label": "No Response", "code": null, "color": "#94A3B8", "requiresReason": true, "description": "Went cold / ghosting" },
+    { "key": "issue", "label": "Issue", "code": null, "color": "#F97316", "requiresReason": true, "description": "Blocker / objection" },
+    { "key": "disqualified", "label": "Disqualified", "code": null, "color": "#EF4444", "requiresReason": true, "description": "Not a real lead" },
+    { "key": "others", "label": "Others", "code": null, "color": "#64748B", "requiresReason": true, "description": "Anything else" }
+  ],
+  "reasons": {
+    "waiting": [
+      { "code": "B", "label": "Still discuss with parent/family" }
+    ],
+    "registered": [
+      { "code": "A", "label": "Register to Trial" }
+    ],
+    "no_response": [
+      { "code": "C1", "label": "Not read after 1st reply" },
+      { "code": "C2", "label": "Read but no response after 1st reply" },
+      { "code": "C3", "label": "No response after asking price" },
+      { "code": "C4", "label": "No response after offer trial schedule" },
+      { "code": "C5", "label": "No response after asking trial data" }
+    ],
+    "issue": [
+      { "code": "D1", "label": "Price issue" },
+      { "code": "D2", "label": "Location issue" },
+      { "code": "D3", "label": "Schedule issue" },
+      { "code": "D4", "label": "Learning duration / curriculum issue" }
+    ],
+    "disqualified": [
+      { "code": "E1", "label": "Not interested / doesn't understand coding" },
+      { "code": "E2", "label": "Prank inquiry" }
+    ],
+    "others": [
+      { "code": "F1", "label": "Others" },
+      { "code": "F2", "label": "Explain others", "requiresNote": true }
+    ]
+  }
+}

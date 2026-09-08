@@ -1,0 +1,9 @@
+[
+  { "id": "imp-1", "studentName": "Kenji Tanaka", "parentName": "Yuki Tanaka", "source": "WA", "country": "Indonesia", "phoneCode": "+62", "phoneNumber": "81290011234", "inquiryDate": "2026-09-07", "rowStatus": "ok", "issue": "" },
+  { "id": "imp-2", "studentName": "Maria Santos", "parentName": "Jose Santos", "source": "WALK IN", "country": "Philippines", "phoneCode": "+63", "phoneNumber": "09171234567", "inquiryDate": "", "rowStatus": "warn", "issue": "Inquiry date empty" },
+  { "id": "imp-3", "studentName": "", "parentName": "Zeny", "source": "WA", "country": "Philippines", "phoneCode": "+63", "phoneNumber": "9060182075", "inquiryDate": "2026-09-07", "rowStatus": "err", "issue": "Student name required; phone already exists" },
+  { "id": "imp-4", "studentName": "Aisha Rahman", "parentName": "Fatima Rahman", "source": "Instagram", "country": "Malaysia", "phoneCode": "+60", "phoneNumber": "123456789", "inquiryDate": "2026-09-06", "rowStatus": "ok", "issue": "" },
+  { "id": "imp-5", "studentName": "Budi", "parentName": "Siti", "source": "WA", "country": "Indonesia", "phoneCode": "+62", "phoneNumber": "abcd123", "inquiryDate": "2026-09-05", "rowStatus": "err", "issue": "Phone number invalid" },
+  { "id": "imp-6", "studentName": "Chloe Lim", "parentName": "David Lim", "source": "Website", "country": "Singapore", "phoneCode": "+65", "phoneNumber": "91234567", "inquiryDate": "2026-09-04", "rowStatus": "ok", "issue": "" },
+  { "id": "imp-7", "studentName": "Farid", "parentName": "Hasan", "source": "WA", "country": "Indonesia", "phoneCode": "+62", "phoneNumber": "81244455566", "inquiryDate": "2026-09-03", "rowStatus": "ok", "issue": "" }
+]

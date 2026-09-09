@@ -39,6 +39,22 @@ function readSpreadsheet(buf: Buffer, name: string): { headers: string[]; rows: 
   return { headers, rows }
 }
 
+// A blocking error is returned only when we genuinely cannot show a useful
+// preview: the file is unreadable, empty, has no data rows, or shares no
+// columns at all with the template. Any file that we CAN map to the template
+// (even partially) is allowed through to the preview so the admin can see
+// exactly which rows/cells are wrong.
+function blocking(fileName: string, message: string, missing: string[]): ParseResult {
+  return {
+    ok: false,
+    templateError: message,
+    header: { ok: false, missing, extra: [] },
+    rows: [],
+    counts: { total: 0, ok: 0, warn: 0, err: 0 },
+    fileName,
+  }
+}
+
 export async function POST(req: Request) {
   let form: FormData
   try {
@@ -57,35 +73,42 @@ export async function POST(req: Request) {
   try {
     parsed = readSpreadsheet(buf, fileName)
   } catch {
-    return NextResponse.json({
-      ok: false,
-      templateError: "Could not read this file. Please upload a .xlsx or .csv file based on the template.",
-      header: { ok: false, missing: [...TEMPLATE_COLUMNS], extra: [] },
-      rows: [],
-      counts: { total: 0, ok: 0, warn: 0, err: 0 },
-      fileName,
-    } satisfies ParseResult)
+    return NextResponse.json(
+      blocking(
+        fileName,
+        "Could not read this file. Please upload a .xlsx or .csv file based on the template.",
+        [...TEMPLATE_COLUMNS]
+      )
+    )
   }
 
   const header = validateHeaders(parsed.headers)
-  if (!header.ok) {
-    const parts: string[] = []
-    if (header.missing.length) parts.push(`Missing columns: ${header.missing.join(", ")}`)
-    if (header.extra.length) parts.push(`Unexpected columns: ${header.extra.join(", ")}`)
-    const result: ParseResult = {
-      ok: false,
-      templateError:
-        "This file does not match the inquiry template. " +
-        parts.join(". ") +
-        ". Download the template and try again.",
-      header,
-      rows: [],
-      counts: { total: 0, ok: 0, warn: 0, err: 0 },
-      fileName,
-    }
-    return NextResponse.json(result)
+
+  // Nothing recognizable at all — almost certainly the wrong file.
+  if (header.missing.length === TEMPLATE_COLUMNS.length) {
+    return NextResponse.json(
+      blocking(
+        fileName,
+        "This file doesn't look like the inquiry template — none of the expected columns were found. Make sure the first row contains the column headers, then try again.",
+        header.missing
+      )
+    )
   }
 
+  // Headers are recognizable but there are no data rows to review.
+  if (parsed.rows.length === 0) {
+    return NextResponse.json(
+      blocking(
+        fileName,
+        "This file has the header row but no data rows underneath. Add at least one inquiry below the headers and upload again.",
+        header.missing
+      )
+    )
+  }
+
+  // From here we ALWAYS return a preview, even if some columns are missing or
+  // extra. Missing columns simply surface as per-cell errors the admin can fix
+  // inline, and `header.missing` / `header.extra` are shown as a banner.
   const existingPhones = new Set(await getPhoneKeys())
   const rows = validateRows(parsed.rows, {
     existingPhones,

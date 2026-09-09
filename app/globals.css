@@ -1530,3 +1530,89 @@ tr.row-err {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
   z-index: 200;
 }
+
+/* ===== Import preview: per-cell error detail (added for detailed error UX) ===== */
+.cell-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 120px;
+}
+.cell-input.cell-bad-err {
+  border-color: #ef4444;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.14);
+}
+.cell-input.cell-bad-warn {
+  border-color: #f59e0b;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.14);
+}
+.cell-msg {
+  font-size: 11.5px;
+  line-height: 1.35;
+  padding: 0 4px;
+  white-space: normal;
+}
+.cell-msg.err {
+  color: #dc2626;
+}
+.cell-msg.warn {
+  color: #b45309;
+}
+.row-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--surface-2, #f1f5f9);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.header-notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 14px 22px 0;
+  padding: 11px 14px;
+  border: 1px solid #fcd9a6;
+  background: #fff7ed;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #9a3412;
+}
+.header-notice b {
+  color: #7c2d12;
+}
+.fix-hint {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 14px 22px 0;
+  padding: 10px 14px;
+  border: 1px solid #fbcaca;
+  background: #fef2f2;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #b91c1c;
+}
+.preview-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 28px 12px;
+  font-size: 13.5px;
+}
+table.preview tbody td {
+  vertical-align: top;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

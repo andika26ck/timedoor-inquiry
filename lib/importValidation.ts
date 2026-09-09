@@ -1,4 +1,4 @@
-import type { ImportRow, HeaderCheck, RowStatus, CountryOption } from "./types"
+import type { ImportRow, HeaderCheck, RowStatus, CountryOption, FieldIssue } from "./types"
 
 // The exact columns the upload template must contain (order-independent).
 // Branch is chosen in the wizard, not in the file — same as the real CMS.
@@ -14,6 +14,20 @@ export const TEMPLATE_COLUMNS = [
   "Contact Note",
 ] as const
 
+// Maps a template column header to the internal field key used for per-cell
+// error highlighting in the preview grid.
+export const COLUMN_TO_FIELD: Record<string, string> = {
+  "Student Name": "student",
+  "Parent Name": "parent",
+  Source: "source",
+  Country: "country",
+  "Phone Code": "phone",
+  "Phone Number": "phone",
+  "Inquiry Date": "date",
+  "Social Media Username": "socialMedia",
+  "Contact Note": "contactNote",
+}
+
 export function templateCsv(): string {
   return TEMPLATE_COLUMNS.join(",") + "\n"
 }
@@ -23,7 +37,9 @@ function norm(s: string): string {
 }
 
 // Compare uploaded headers against the template. Missing required columns
-// make the file invalid; unknown extra columns are reported but not fatal.
+// are reported so the UI can flag them; unknown extra columns are reported
+// but never fatal. Nothing here blocks the import on its own — the parse
+// route decides how to surface this to the admin.
 export function validateHeaders(headers: string[]): HeaderCheck {
   const have = new Set(headers.map(norm))
   const want = TEMPLATE_COLUMNS.map(norm)
@@ -125,8 +141,15 @@ export function validateRows(
   const seenInFile = new Map<string, number>()
 
   return rawRows.map((raw, index) => {
-    const errors: string[] = []
-    const warns: string[] = []
+    // Per-field issues let the UI highlight the exact cell that is wrong.
+    const fieldIssues: Record<string, FieldIssue> = {}
+    const flag = (field: string, level: "err" | "warn", msg: string) => {
+      const cur = fieldIssues[field]
+      // errors win over warnings; otherwise keep the first message for a field
+      if (!cur || (cur.level === "warn" && level === "err")) {
+        fieldIssues[field] = { level, msg }
+      }
+    }
 
     const studentName = pick(raw, "Student Name")
     const parentName = pick(raw, "Parent Name")
@@ -138,18 +161,19 @@ export function validateRows(
     const contactNote = pick(raw, "Contact Note")
     let inquiryDate = pick(raw, "Inquiry Date")
 
-    if (!studentName) errors.push("Student name required")
-    if (!parentName) errors.push("Parent name required")
+    if (!studentName) flag("student", "err", "Student name is required")
+    if (!parentName) flag("parent", "err", "Parent name is required")
 
-    if (!source) errors.push("Source required")
-    else if (!sourceSet.has(norm(source))) warns.push(`Unknown source "${source}"`)
+    if (!source) flag("source", "err", "Source is required")
+    else if (!sourceSet.has(norm(source)))
+      flag("source", "warn", `Unknown source "${source}" — will be saved as typed`)
 
     if (!country) {
-      errors.push("Country required")
+      flag("country", "err", "Country is required")
     } else {
       const match = countryByName.get(norm(country))
       if (!match) {
-        errors.push(`Unknown country "${country}"`)
+        flag("country", "err", `Unknown country "${country}" — not in the allowed list`)
       } else {
         country = match.name
         if (!phoneCode) phoneCode = match.phoneCode
@@ -157,37 +181,43 @@ export function validateRows(
     }
 
     if (!phoneNumber) {
-      errors.push("Phone number required")
+      flag("phone", "err", "Phone number is required")
     } else if (digitsOnly(phoneNumber).length < 6) {
-      errors.push("Phone number invalid")
+      flag("phone", "err", "Phone number looks too short (min 6 digits)")
     } else {
       const key = phoneKey(phoneCode, phoneNumber)
       if (ctx.existingPhones.has(key)) {
-        errors.push("Phone already exists")
+        flag("phone", "err", "This phone already exists in the database")
       } else if (seenInFile.has(key)) {
-        errors.push(`Duplicate phone (row ${seenInFile.get(key)! + 1} in file)`)
+        flag("phone", "err", `Duplicate of row ${seenInFile.get(key)! + 2} in this file`)
       } else {
         seenInFile.set(key, index)
       }
     }
 
     if (!inquiryDate) {
-      warns.push("Inquiry date empty")
+      flag("date", "warn", "Inquiry date is empty")
     } else if (!isValidDate(inquiryDate)) {
       const d = new Date(inquiryDate)
       if (!isNaN(d.getTime())) {
         inquiryDate = d.toISOString().slice(0, 10)
-        warns.push("Date reformatted to YYYY-MM-DD")
+        flag("date", "warn", "Date reformatted to YYYY-MM-DD")
       } else {
-        errors.push("Invalid date format (use YYYY-MM-DD)")
+        flag("date", "err", "Invalid date — use format YYYY-MM-DD")
       }
     }
 
-    const rowStatus: RowStatus = errors.length ? "err" : warns.length ? "warn" : "ok"
-    const issues = [...errors, ...warns]
+    const levels = Object.values(fieldIssues).map((f) => f.level)
+    const rowStatus: RowStatus = levels.includes("err")
+      ? "err"
+      : levels.length
+      ? "warn"
+      : "ok"
+    const issues = Object.values(fieldIssues).map((f) => f.msg)
 
     return {
       id: "imp-" + (index + 1),
+      sourceRow: index + 2, // +1 header row, +1 for 1-based spreadsheet numbering
       studentName,
       parentName,
       source,
@@ -200,6 +230,7 @@ export function validateRows(
       rowStatus,
       issue: issues.join("; "),
       issues,
+      fieldIssues,
     }
   })
 }

@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import type { ImportRow, RowStatus, Options, ParseResult } from "../lib/types"
+import type { ImportRow, RowStatus, Options, ParseResult, HeaderCheck } from "../lib/types"
 import { validateRows, countRows, templateCsv, TEMPLATE_COLUMNS } from "../lib/importValidation"
 import { parseImportApi, importInquiriesApi } from "../lib/apiClient"
 import {
@@ -13,7 +13,7 @@ import {
   IconFile,
 } from "./Icons"
 
-const STEPS = ["Download Template", "Select Branch", "Upload File", "Preview & Edit"]
+const STEPS = ["Download Template", "Select Branch", "Upload File", "Preview & Fix"]
 
 type Raw = Record<string, string>
 
@@ -29,6 +29,11 @@ function toRaw(r: ImportRow): Raw {
     Country: r.country,
     "Contact Note": r.contactNote,
   }
+}
+
+function csvCell(v: string): string {
+  const s = v ?? ""
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
 }
 
 function RowStat({ status }: { status: RowStatus }) {
@@ -76,6 +81,9 @@ export default function ImportModal({
   const [templateError, setTemplateError] = React.useState<string | null>(
     initialParse && !initialParse.ok ? initialParse.templateError ?? "Invalid template" : null
   )
+  const [headerInfo, setHeaderInfo] = React.useState<HeaderCheck | null>(
+    initialParse?.header ?? null
+  )
   const [rawRows, setRawRows] = React.useState<Raw[]>(
     initialParse?.ok ? initialParse.rows.map(toRaw) : []
   )
@@ -92,7 +100,8 @@ export default function ImportModal({
 
   const existingSet = React.useMemo(() => new Set(existingPhones), [existingPhones])
 
-  // Live re-validation whenever rows are edited.
+  // Live re-validation whenever rows are edited. Row identity (id + sourceRow)
+  // is preserved so per-cell errors update as the admin fixes them inline.
   const rows: ImportRow[] = React.useMemo(
     () =>
       validateRows(rawRows, {
@@ -116,6 +125,7 @@ export default function ImportModal({
   const counts = countRows(rows)
   const visible = rows.filter((r) => (filter === "all" ? true : r.rowStatus === filter))
   const selectedCount = rows.filter((r) => selected[r.id] && r.rowStatus !== "err").length
+  const hasIssues = counts.err > 0 || counts.warn > 0
 
   function downloadTemplate() {
     if (typeof document === "undefined") return
@@ -128,14 +138,41 @@ export default function ImportModal({
     URL.revokeObjectURL(url)
   }
 
+  // Export a CSV listing every problem row with its spreadsheet row number and
+  // the exact issue per row — so the admin can find and fix it in their file.
+  function downloadErrorReport() {
+    if (typeof document === "undefined") return
+    const bad = rows.filter((r) => r.rowStatus !== "ok")
+    if (bad.length === 0) return
+    const head = ["Spreadsheet Row", ...TEMPLATE_COLUMNS, "Problems"]
+    const lines = [head.map(csvCell).join(",")]
+    for (const r of bad) {
+      const raw = toRaw(r)
+      const cells = [
+        String(r.sourceRow),
+        ...TEMPLATE_COLUMNS.map((c) => csvCell(raw[c] ?? "")),
+        csvCell(r.issues.join(" | ")),
+      ]
+      lines.push(cells.join(","))
+    }
+    const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "inquiry-import-errors.csv"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function handleFile(file: File) {
     setFileName(file.name)
     setParsing(true)
     setTemplateError(null)
     try {
       const res = await parseImportApi(file, branch)
+      setHeaderInfo(res.header ?? null)
       if (!res.ok) {
-        setTemplateError(res.templateError ?? "This file does not match the template.")
+        setTemplateError(res.templateError ?? "This file could not be read.")
         setRawRows([])
         return
       }
@@ -184,6 +221,39 @@ export default function ImportModal({
   }
 
   const stepState = (i: number) => (i < step ? "done" : i === step ? "active" : "")
+
+  // Renders one editable cell with inline, per-cell error/warning detail.
+  function Cell({
+    r,
+    field,
+    col,
+    value,
+    placeholder,
+    onChange,
+  }: {
+    r: ImportRow
+    field: string
+    col: string
+    value: string
+    placeholder?: string
+    onChange: (v: string) => void
+  }) {
+    const fi = r.fieldIssues?.[field]
+    const cls =
+      "cell-input" + (fi ? (fi.level === "err" ? " cell-bad-err" : " cell-bad-warn") : "")
+    return (
+      <div className="cell-wrap">
+        <input
+          className={cls}
+          value={value}
+          placeholder={placeholder}
+          title={fi ? fi.msg : undefined}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {fi && <div className={"cell-msg " + fi.level}>{fi.msg}</div>}
+      </div>
+    )
+  }
 
   return (
     <div className="overlay center" onClick={onClose}>
@@ -291,9 +361,19 @@ export default function ImportModal({
             {templateError && (
               <div className="template-error">
                 <div className="template-error-title">
-                  <IconAlert size={16} /> File does not match the template
+                  <IconAlert size={16} /> This file can’t be previewed yet
                 </div>
                 <div className="template-error-body">{templateError}</div>
+                {headerInfo && (headerInfo.missing.length > 0 || headerInfo.extra.length > 0) && (
+                  <div className="template-error-body">
+                    {headerInfo.missing.length > 0 && (
+                      <div>Missing columns: <b>{headerInfo.missing.join(", ")}</b></div>
+                    )}
+                    {headerInfo.extra.length > 0 && (
+                      <div>Unexpected columns: <b>{headerInfo.extra.join(", ")}</b></div>
+                    )}
+                  </div>
+                )}
                 <button className="btn btn-ghost sm" onClick={() => setStep(0)}>
                   <IconDownload size={14} /> Go to template
                 </button>
@@ -302,7 +382,7 @@ export default function ImportModal({
           </div>
         )}
 
-        {/* STEP 4 - Preview & Edit */}
+        {/* STEP 4 - Preview & Fix */}
         {step === 3 && !result && (
           <>
             <div className="summary-bar">
@@ -332,10 +412,36 @@ export default function ImportModal({
             </div>
 
             <div className="modal-body">
+              {headerInfo && (headerInfo.missing.length > 0 || headerInfo.extra.length > 0) && (
+                <div className="header-notice">
+                  <IconInfo size={15} />
+                  <div>
+                    {headerInfo.missing.length > 0 && (
+                      <span>
+                        Template columns not found in your file:{" "}
+                        <b>{headerInfo.missing.join(", ")}</b>. Those cells show as errors below — fill them in or fix your header row.{" "}
+                      </span>
+                    )}
+                    {headerInfo.extra.length > 0 && (
+                      <span>
+                        Extra columns ignored: <b>{headerInfo.extra.join(", ")}</b>.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {counts.err > 0 && (
+                <div className="fix-hint">
+                  <IconAlert size={14} /> {counts.err} row(s) have errors and are excluded from import. Edit the highlighted cells to fix them — rows turn green when ready. The <b>Row</b> column matches the row number in your spreadsheet.
+                </div>
+              )}
+
               <table className="preview">
                 <thead>
                   <tr>
                     <th style={{ width: 40 }}></th>
+                    <th style={{ width: 54 }}>Row</th>
                     <th>Status</th>
                     <th>Student Name</th>
                     <th>Parent Name</th>
@@ -343,83 +449,70 @@ export default function ImportModal({
                     <th>Country</th>
                     <th>Phone</th>
                     <th>Inquiry Date</th>
-                    <th>Issue</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visible.map((r) => {
-                    const bad = (kw: string) => r.rowStatus === "err" && r.issue.toLowerCase().includes(kw)
-                    return (
-                      <tr key={r.id} className={r.rowStatus === "err" ? "row-err" : r.rowStatus === "warn" ? "row-warn" : ""}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            className="checkbox"
-                            checked={!!selected[r.id] && r.rowStatus !== "err"}
-                            disabled={r.rowStatus === "err"}
-                            onChange={() => setSelected((s) => ({ ...s, [r.id]: !s[r.id] }))}
-                          />
-                        </td>
-                        <td><RowStat status={r.rowStatus} /></td>
-                        <td>
-                          <input
-                            className={"cell-input" + (bad("name") ? " editing" : "")}
-                            value={r.studentName}
-                            placeholder={!r.studentName ? "Required" : ""}
-                            onChange={(e) => editCell(r.id, "Student Name", e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            className="cell-input"
-                            value={r.parentName}
-                            onChange={(e) => editCell(r.id, "Parent Name", e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            className="cell-input"
-                            value={r.source}
-                            onChange={(e) => editCell(r.id, "Source", e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            className={"cell-input" + (bad("country") ? " editing" : "")}
-                            value={r.country}
-                            onChange={(e) => editCell(r.id, "Country", e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            className={"cell-input" + (bad("phone") ? " editing" : "")}
-                            value={r.phoneCode + " " + r.phoneNumber}
-                            onChange={(e) => {
-                              const v = e.target.value.trim()
-                              const m = v.match(/^(\+?\d+)\s+(.*)$/)
-                              if (m) {
-                                editCell(r.id, "Phone Code", m[1])
-                                editCell(r.id, "Phone Number", m[2])
-                              } else {
-                                editCell(r.id, "Phone Number", v)
-                              }
-                            }}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            className={"cell-input" + (bad("date") ? " editing" : !r.inquiryDate ? " editing" : "")}
-                            value={r.inquiryDate}
-                            placeholder={!r.inquiryDate ? "YYYY-MM-DD" : ""}
-                            onChange={(e) => editCell(r.id, "Inquiry Date", e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <span className={"issue-text " + r.rowStatus}>{r.issue || "\u2014"}</span>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {visible.map((r) => (
+                    <tr
+                      key={r.id}
+                      className={r.rowStatus === "err" ? "row-err" : r.rowStatus === "warn" ? "row-warn" : ""}
+                    >
+                      <td>
+                        <input
+                          type="checkbox"
+                          className="checkbox"
+                          checked={!!selected[r.id] && r.rowStatus !== "err"}
+                          disabled={r.rowStatus === "err"}
+                          onChange={() => setSelected((s) => ({ ...s, [r.id]: !s[r.id] }))}
+                        />
+                      </td>
+                      <td><span className="row-num">{r.sourceRow}</span></td>
+                      <td><RowStat status={r.rowStatus} /></td>
+                      <td>
+                        <Cell r={r} field="student" col="Student Name" value={r.studentName}
+                          placeholder={!r.studentName ? "Required" : ""}
+                          onChange={(v) => editCell(r.id, "Student Name", v)} />
+                      </td>
+                      <td>
+                        <Cell r={r} field="parent" col="Parent Name" value={r.parentName}
+                          placeholder={!r.parentName ? "Required" : ""}
+                          onChange={(v) => editCell(r.id, "Parent Name", v)} />
+                      </td>
+                      <td>
+                        <Cell r={r} field="source" col="Source" value={r.source}
+                          onChange={(v) => editCell(r.id, "Source", v)} />
+                      </td>
+                      <td>
+                        <Cell r={r} field="country" col="Country" value={r.country}
+                          placeholder={!r.country ? "Required" : ""}
+                          onChange={(v) => editCell(r.id, "Country", v)} />
+                      </td>
+                      <td>
+                        <Cell r={r} field="phone" col="Phone" value={(r.phoneCode + " " + r.phoneNumber).trim()}
+                          placeholder={!r.phoneNumber ? "+62 812..." : ""}
+                          onChange={(v) => {
+                            const val = v.trim()
+                            const m = val.match(/^(\+?\d+)\s+(.*)$/)
+                            if (m) {
+                              editCell(r.id, "Phone Code", m[1])
+                              editCell(r.id, "Phone Number", m[2])
+                            } else {
+                              editCell(r.id, "Phone Number", val)
+                            }
+                          }} />
+                      </td>
+                      <td>
+                        <Cell r={r} field="date" col="Inquiry Date" value={r.inquiryDate}
+                          placeholder={!r.inquiryDate ? "YYYY-MM-DD" : ""}
+                          onChange={(v) => editCell(r.id, "Inquiry Date", v)} />
+                      </td>
+                    </tr>
+                  ))}
+                  {visible.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="preview-empty">No rows match this filter.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -455,7 +548,7 @@ export default function ImportModal({
           ) : (
             <>
               {step === 3 && (
-                <button className="btn btn-ghost left">
+                <button className="btn btn-ghost left" onClick={downloadErrorReport} disabled={!hasIssues}>
                   <IconDownload size={16} /> Download error report
                 </button>
               )}

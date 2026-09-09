@@ -67,8 +67,14 @@ export interface Options {
 
 export type RowStatus = "ok" | "warn" | "err"
 
+export interface FieldIssue {
+  level: "err" | "warn"
+  msg: string
+}
+
 export interface ImportRow {
   id: string
+  sourceRow: number // row number as it appears in the uploaded spreadsheet
   studentName: string
   parentName: string
   source: string
@@ -80,7 +86,9 @@ export interface ImportRow {
   inquiryDate: string
   rowStatus: RowStatus
   issue: string
-  issues?: string[]
+  issues: string[]
+  // Per-cell issues keyed by field: student, parent, source, country, phone, date
+  fieldIssues: Record<string, FieldIssue>
 }
 
 export interface HeaderCheck {

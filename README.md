@@ -1,120 +1,136 @@
-# Timedoor Academy — Inquiry (Redesign Mockup)
+# Timedoor Academy — Inquiry CMS (redesign prototype)
 
-Redesign menu **Inquiry** untuk CMS Timedoor Academy. Dibuat dengan **Next.js (App Router) + TypeScript**, data **static disimpan di JSON** (tanpa backend/DB). Fokusnya: bikin input inquiry jadi nyaman (nggak perlu lari ke spreadsheet), plus alur **import dengan preview sebelum save** dan **status model** yang lengkap.
+Redesign / mockup of the **Inquiry** menu so admins can add and import inquiries
+comfortably inside the app instead of juggling spreadsheets. Built with **Next.js
+(App Router)** + **TypeScript**, now backed by a **real (simple) SQLite database**
+and a **step-by-step import wizard** with template validation.
 
-> Ini prototype UI/UX. Semua data ada di folder `data/*.json` dan hanya hidup di memори browser (state React). Refresh = balik ke data awal.
+> Focus is the Inquiry page only — no other menus are implemented.
 
 ---
 
-## Cara menjalankan
+## Quick start
 
 ```bash
 npm install
 npm run dev
+# open http://localhost:3000
 ```
 
-Buka http://localhost:3000 — otomatis redirect ke halaman Inquiry.
-
-Script lain:
+First run creates a local database at `data/inquiry.db` and seeds it from
+`data/inquiries.json` (15 sample rows). To wipe and re-seed:
 
 ```bash
-npm run build   # production build
-npm run start   # jalankan hasil build
-npm run lint    # next lint
-```
-
-Butuh Node.js 18+.
-
----
-
-## Fitur utama
-
-### 1. Quick Add (inline di tabel)
-- Tombol **Quick Add** memunculkan baris input langsung di dalam tabel (row paling atas, di-highlight hijau).
-- Isi field, tekan **Enter** untuk simpan, **Esc** untuk batal.
-- Cocok buat admin yang mau input cepat banyak data — nggak perlu buka form panjang.
-
-### 2. New Inquiry (form drawer lengkap)
-- Tombol **New Inquiry** membuka drawer dari kanan dengan form bagian per bagian: Basic Info, Source & Contact, Timing, Optional.
-- Validasi field wajib + cek nomor telepon.
-
-### 3. Nomor telepon unik
-- Nomor telepon adalah identitas utama customer, jadi **tidak boleh duplikat**.
-- Kalau nomor sudah ada, muncul **warning merah** (di quick add row & di form drawer) dan tombol simpan dinonaktifkan.
-- Pembandingan dinormalisasi: kode negara + digit saja, leading zero diabaikan (`081...` == `81...`).
-
-### 4. Import dengan Preview & Edit
-Wizard 4 langkah: **Download Template → Upload File → Preview & Edit → Confirm Import**.
-- Preview menampilkan tiap baris dengan status: **Ready / Warning / Error**.
-- Cell bisa **diedit langsung** di preview sebelum di-save.
-- Filter chip: All / Warnings / Errors.
-- Checkbox buat pilih baris; baris error default tidak tercentang.
-- **Partial import** — cuma import baris yang dipilih ("Import N selected").
-- Bisa download error report.
-
-### 5. Status model (8 stage + 15 reason code)
-Status bukan cuma Pending/In Progress/Decline, tapi dipetakan jadi **8 stage** dengan **reason code**:
-
-| Stage | Warna | Reason |
-|---|---|---|
-| New | Biru | — |
-| In Progress | Indigo | — |
-| Waiting | Amber | otomatis `B` (diskusi sama keluarga) |
-| Registered | Hijau | otomatis `A` (menang — daftar trial) |
-| No Response | Abu | wajib pilih (C1–C5) |
-| Issue | Oранye | wajib pilih (D1–D4) |
-| Disqualified | Merah | wajib pilih (E1–E2) |
-| Others | Slate | wajib pilih (F1–F2) |
-
-- Ganti status lewat **Status Picker** (search + pilih stage + pilih reason kalau perlu).
-- Reason `F2` (Explain others) wajib isi catatan.
-
-### 6. History / audit trail
-- Tiap perubahan status kesimpan: dari → ke, reason, siapa yang ubah, kapan, dan catatan.
-- Lihat di **Detail drawer** → Status History (timeline, terbaru di atas).
-
----
-
-## Struktur folder
-
-```
-timedoor-inquiry/
-├── app/
-│   ├── globals.css        # semua styling (plain CSS, tanpa Tailwind)
-│   ├── layout.tsx         # app shell: Sidebar + Topbar
-│   └── page.tsx           # halaman Inquiry
-├── components/
-│   ├── Icons.tsx          # kumpulan ikon inline SVG
-│   ├── Sidebar.tsx        # navigasi kiri
-│   ├── Topbar.tsx         # header atas
-│   ├── StatusChip.tsx     # chip status berwarna
-│   ├── InquiryTable.tsx   # tabel utama
-│   ├── QuickAddRow.tsx    # baris input cepat inline
-│   ├── RowActionsMenu.tsx # menu titik-tiga
-│   ├── StatusPicker.tsx   # modal ganti status
-│   ├── NewInquiryDrawer.tsx # form lengkap
-│   ├── DetailDrawer.tsx   # detail + history
-│   ├── ImportModal.tsx    # wizard import
-│   └── InquiryApp.tsx     # state & orchestration (client component)
-├── data/
-│   ├── inquiries.json     # 15 data inquiry contoh
-│   ├── statuses.json      # definisi 8 stage + reason code
-│   ├── options.json       # branch, source, country
-│   └── import-sample.json # data contoh buat demo import
-├── lib/
-│   ├── types.ts           # TypeScript types
-│   ├── data.ts            # loader JSON
-│   ├── statusConfig.ts    # helper status/reason/warna
-│   ├── phone.ts           # normalisasi & validasi telepon
-│   └── format.ts          # format tanggal
-├── package.json
-├── tsconfig.json
-└── next.config.mjs
+npm run db:reset   # deletes data/inquiry.db; next run re-seeds
 ```
 
 ---
 
-## Catatan teknis
-- **Tanpa Tailwind** — styling murni CSS di `app/globals.css` (pakai CSS variables buat token warna).
-- **Data static** — semua dari `data/*.json`. Perubahan (tambah, ganti status, hapus) hanya di React state, reset saat refresh. Gampang nanti disambungin ke API asli tinggal ganti `lib/data.ts` + handler di `InquiryApp.tsx`.
-- Field wajib: Branch, Student Name, Parent Name, Source, Country, Phone Code, Phone Number, Inquiry Date. Opsional: Social Media Username, Contact Note.
+## What's new in this version
+
+### 1. Real database (not just JSON)
+- Uses **sql.js** (SQLite compiled to WebAssembly). Pure JS/WASM, so
+  `npm install` never needs a native build toolchain — works the same on
+  Windows, macOS, and Linux.
+- Data is stored on disk in `data/inquiry.db` and persists across restarts.
+- Two tables:
+  - `inquiries` — one row per inquiry. `phoneKey` is **UNIQUE**, so duplicate
+    phone numbers are rejected at the database level.
+  - `history` — the status change log for each inquiry (from → to, reason,
+    actor, timestamp).
+- All reads/writes go through API routes; the UI never touches the DB directly.
+
+### 2. Step-by-step import wizard (no more jump-to-preview)
+The **Import** button opens a 4-step wizard, like a real CMS:
+
+1. **Download Template** — grab the exact `.csv` template (column order shown).
+2. **Select Branch** — choose the branch all rows will be imported into
+   (branch is *not* a column in the file).
+3. **Upload File** — drop or pick a `.xlsx` / `.csv` file. The file's header is
+   checked against the template **before** anything else:
+   - If it doesn't match, a red error box lists the **missing** and
+     **unexpected** columns and you stay on this step.
+   - If it matches, it advances to preview.
+4. **Preview & Edit** — every row is validated and **editable inline**. Fix
+   errors right in the table and watch them clear live. Error rows can't be
+   selected; only valid rows are imported.
+
+### 3. Spreadsheet parsing + validation
+- `.xlsx` is parsed with **SheetJS (xlsx)**; `.csv` with a small built-in parser.
+- Per-row checks: required fields, valid phone, duplicate phone (both within the
+  file and against existing DB records), known source, matched country, and date
+  format (auto-reformatted to `YYYY-MM-DD` when possible).
+
+---
+
+## How to test the "wrong template" error
+1. Click **Import → Next → Next** to reach **Upload File**.
+2. Upload any spreadsheet whose headers don't match the template — e.g. a file
+   with columns `Name, Phone, Notes`.
+3. You'll see: *"File does not match the template"* with the exact missing and
+   unexpected columns listed. Download the template, fix the headers, re-upload.
+
+To test row-level errors, upload a file that matches the template but contains
+bad rows (empty name, phone like `abcd`, a phone that already exists, an unknown
+source, or a malformed date). Those rows show up flagged in **Preview & Edit**.
+
+---
+
+## Template columns (exact order)
+```
+Student Name, Parent Name, Source, Phone Code, Phone Number,
+Social Media Username, Inquiry Date, Country, Contact Note
+```
+Required: Student Name, Parent Name, Source, Phone Number, Country, Inquiry Date.
+Optional: Social Media Username, Contact Note. Branch is chosen in the wizard.
+
+---
+
+## Project structure
+```
+app/
+  api/
+    inquiries/route.ts          GET list · POST create
+    inquiries/[id]/route.ts     PATCH status · DELETE
+    inquiries/import/route.ts   POST bulk import validated rows
+    import/parse/route.ts       POST spreadsheet → validate header + rows
+  globals.css                   all styling (design tokens + wizard styles)
+  layout.tsx, page.tsx
+components/
+  InquiryApp.tsx                page state, talks to the API
+  InquiryTable.tsx, QuickAddRow.tsx
+  NewInquiryDrawer.tsx, DetailDrawer.tsx
+  StatusPicker.tsx              15 statuses grouped into 8 stages + reasons
+  ImportModal.tsx               the step-by-step import wizard
+  Sidebar.tsx, Topbar.tsx, Icons.tsx
+lib/
+  db.ts                         sql.js database layer (schema, seed, CRUD)
+  apiClient.ts                  typed fetch helpers used by the UI
+  importValidation.ts           template + row validation (framework-free)
+  phone.ts, types.ts, data.ts
+data/
+  inquiries.json                seed data
+  options.json, statuses.json   branches / sources / countries / statuses
+  inquiry.db                    generated at runtime (git-ignored)
+```
+
+## API routes
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/inquiries` | list all inquiries |
+| POST | `/api/inquiries` | create one (rejects duplicate phone) |
+| PATCH | `/api/inquiries/:id` | change status + append history |
+| DELETE | `/api/inquiries/:id` | delete one |
+| POST | `/api/import/parse` | upload a file → header check + validated rows |
+| POST | `/api/inquiries/import` | commit the selected valid rows |
+
+## Dependencies
+- `next`, `react`, `react-dom`
+- `sql.js` — WebAssembly SQLite (the database)
+- `xlsx` (SheetJS) — spreadsheet parsing
+
+## Notes
+- This is a UI/UX prototype; there is no auth. The branch shown in the topbar is
+  static.
+- `data/inquiry.db` is git-ignored so the repo stays clean; it's recreated and
+  seeded automatically on first run.

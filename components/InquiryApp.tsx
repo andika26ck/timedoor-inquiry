@@ -1,22 +1,27 @@
 "use client"
 import * as React from "react"
 import type { Inquiry, StageKey } from "../lib/types"
-import { inquiries as seedInquiries, options, importSample, stages } from "../lib/data"
+import { options, stages } from "../lib/data"
 import { normalizePhone } from "../lib/phone"
+import {
+  fetchInquiries,
+  createInquiryApi,
+  updateStatusApi,
+  deleteInquiryApi,
+} from "../lib/apiClient"
 import InquiryTable from "./InquiryTable"
 import StatusPicker from "./StatusPicker"
 import NewInquiryDrawer, { type NewInquiryForm } from "./NewInquiryDrawer"
 import DetailDrawer from "./DetailDrawer"
 import ImportModal from "./ImportModal"
 import { type Draft } from "./QuickAddRow"
-import { IconPlus, IconUpload, IconSearch } from "./Icons"
-
-function nowIso() {
-  return new Date().toISOString()
-}
+import { IconPlus, IconUpload } from "./Icons"
 
 export default function InquiryApp() {
-  const [list, setList] = React.useState<Inquiry[]>(seedInquiries)
+  const [list, setList] = React.useState<Inquiry[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [toast, setToast] = React.useState<string | null>(null)
+
   const [showQuickAdd, setShowQuickAdd] = React.useState(false)
   const [quickKey, setQuickKey] = React.useState(0)
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
@@ -30,12 +35,29 @@ export default function InquiryApp() {
   const [fSource, setFSource] = React.useState("")
   const [fCountry, setFCountry] = React.useState("")
 
+  const refresh = React.useCallback(async () => {
+    const data = await fetchInquiries()
+    setList(data)
+  }, [])
+
+  React.useEffect(() => {
+    refresh()
+      .catch(() => setToast("Failed to load inquiries"))
+      .finally(() => setLoading(false))
+  }, [refresh])
+
   React.useEffect(() => {
     if (!openMenuId) return
     const handler = () => setOpenMenuId(null)
     window.addEventListener("click", handler)
     return () => window.removeEventListener("click", handler)
   }, [openMenuId])
+
+  React.useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3500)
+    return () => clearTimeout(t)
+  }, [toast])
 
   const existingPhones = React.useMemo(
     () => list.map((i) => normalizePhone(i.phoneCode, i.phoneNumber)),
@@ -49,13 +71,7 @@ export default function InquiryApp() {
     if (search) {
       const q = search.toLowerCase()
       const hay = (
-        i.studentName +
-        " " +
-        i.parentName +
-        " " +
-        i.phoneNumber +
-        " " +
-        i.socialMedia
+        i.studentName + " " + i.parentName + " " + i.phoneNumber + " " + (i.socialMedia ?? "")
       ).toLowerCase()
       if (!hay.includes(q)) return false
     }
@@ -69,9 +85,8 @@ export default function InquiryApp() {
     setFCountry("")
   }
 
-  function makeInquiry(d: Draft | NewInquiryForm): Inquiry {
-    return {
-      id: "inq-" + Math.random().toString(36).slice(2, 8),
+  async function onQuickSave(d: Draft) {
+    const res = await createInquiryApi({
       branch: d.branch,
       studentName: d.studentName,
       parentName: d.parentName,
@@ -79,55 +94,65 @@ export default function InquiryApp() {
       country: d.country,
       phoneCode: d.phoneCode,
       phoneNumber: d.phoneNumber,
-      inquiryDate: d.inquiryDate,
       socialMedia: d.socialMedia,
       contactNote: d.contactNote,
-      stage: "new",
-      reasonCode: null,
-      history: [
-        { from: null, to: "new", reasonCode: null, by: "Andika", at: nowIso(), note: "Created" },
-      ],
+      inquiryDate: d.inquiryDate,
+    })
+    if (!res.ok) {
+      setToast(res.error || "Could not save inquiry")
+      return
     }
-  }
-
-  function onQuickSave(d: Draft) {
-    setList((l) => [makeInquiry(d), ...l])
+    if (res.inquiry) setList((l) => [res.inquiry!, ...l])
     setQuickKey((k) => k + 1) // reset the quick-add row for "add another"
   }
 
-  function onDrawerSave(f: NewInquiryForm) {
-    setList((l) => [makeInquiry(f), ...l])
+  async function onDrawerSave(f: NewInquiryForm) {
+    const res = await createInquiryApi({
+      branch: f.branch,
+      studentName: f.studentName,
+      parentName: f.parentName,
+      source: f.source,
+      country: f.country,
+      phoneCode: f.phoneCode,
+      phoneNumber: f.phoneNumber,
+      socialMedia: f.socialMedia,
+      contactNote: f.contactNote,
+      inquiryDate: f.inquiryDate,
+    })
+    if (!res.ok) {
+      setToast(res.error || "Could not save inquiry")
+      return
+    }
+    if (res.inquiry) setList((l) => [res.inquiry!, ...l])
     setDrawerOpen(false)
   }
 
-  function applyStatus(target: Inquiry, stage: StageKey, reason: string | null, note: string) {
-    setList((l) =>
-      l.map((i) =>
-        i.id === target.id
-          ? {
-              ...i,
-              stage,
-              reasonCode: reason,
-              history: [
-                ...i.history,
-                { from: i.stage, to: stage, reasonCode: reason, by: "Andika", at: nowIso(), note },
-              ],
-            }
-          : i
-      )
-    )
+  async function applyStatus(target: Inquiry, stage: StageKey, reason: string | null, note: string) {
+    const res = await updateStatusApi(target.id, stage, reason, note)
+    if (res.ok && res.inquiry) {
+      const updated = res.inquiry
+      setList((l) => l.map((i) => (i.id === updated.id ? updated : i)))
+      setDetailFor((d) => (d && d.id === updated.id ? updated : d))
+    } else {
+      setToast(res.error || "Could not update status")
+    }
     setPickerFor(null)
-    setDetailFor((d) => (d && d.id === target.id ? { ...d, stage, reasonCode: reason } : d))
   }
 
-  function onRegister(inq: Inquiry) {
+  async function onRegister(inq: Inquiry) {
     setOpenMenuId(null)
-    applyStatus(inq, "registered", "A", "Marked as registered")
+    await applyStatus(inq, "registered", "A", "Marked as registered")
   }
 
-  function onDelete(inq: Inquiry) {
+  async function onDelete(inq: Inquiry) {
     setOpenMenuId(null)
     setList((l) => l.filter((i) => i.id !== inq.id))
+    try {
+      await deleteInquiryApi(inq.id)
+    } catch {
+      setToast("Could not delete \u2014 reloading")
+      refresh()
+    }
   }
 
   return (
@@ -136,7 +161,7 @@ export default function InquiryApp() {
         <div>
           <h1 className="page-title">Inquiry</h1>
           <div className="page-sub">
-            {filtered.length} of {list.length} inquiries · HQ Training
+            {loading ? "Loading…" : `${filtered.length} of ${list.length} inquiries`} · HQ Training
           </div>
         </div>
         <div className="head-actions">
@@ -249,12 +274,16 @@ export default function InquiryApp() {
 
       {importOpen && (
         <ImportModal
-          rows={importSample}
           options={options}
+          existingPhones={existingPhones}
           onClose={() => setImportOpen(false)}
-          onImport={() => setImportOpen(false)}
+          onImported={() => {
+            refresh()
+          }}
         />
       )}
+
+      {toast && <div className="toast">{toast}</div>}
     </div>
   )
 }

@@ -75,7 +75,25 @@ export interface ImportRow {
   country: string
   phoneCode: string
   phoneNumber: string
+  socialMedia: string
+  contactNote: string
   inquiryDate: string
   rowStatus: RowStatus
   issue: string
+  issues?: string[]
+}
+
+export interface HeaderCheck {
+  ok: boolean
+  missing: string[]
+  extra: string[]
+}
+
+export interface ParseResult {
+  ok: boolean
+  templateError?: string
+  header: HeaderCheck
+  rows: ImportRow[]
+  counts: { total: number; ok: number; warn: number; err: number }
+  fileName: string
 }

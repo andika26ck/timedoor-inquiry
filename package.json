@@ -6,17 +6,21 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:reset": "node -e \"require('fs').rmSync('data/inquiry.db',{force:true});console.log('DB reset - will reseed from data/inquiries.json on next run')\""
   },
   "dependencies": {
     "next": "14.2.5",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "sql.js": "1.11.0",
+    "xlsx": "0.18.5"
   },
   "devDependencies": {
     "@types/node": "20.14.10",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
+    "@types/sql.js": "1.4.9",
     "typescript": "5.5.3"
   }
 }

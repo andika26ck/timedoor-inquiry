@@ -5,4 +5,5 @@ dist
 .DS_Store
 *.log
 .env*
-qa/out
+qa
+data/inquiry.db

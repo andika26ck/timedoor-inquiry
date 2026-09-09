@@ -1616,3 +1616,25 @@ table.preview tbody td {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ===== Import preview: restore dropdown / date-picker controls ===== */
+select.cell-input,
+.cell-select,
+.cell-date {
+  border-color: var(--border);
+  background: #fff;
+  height: 32px;
+}
+.cell-select {
+  cursor: pointer;
+  -webkit-appearance: auto;
+  appearance: auto;
+  padding-right: 4px;
+}
+.cell-date {
+  font-variant-numeric: tabular-nums;
+}
+.cell-select:hover,
+.cell-date:hover {
+  border-color: var(--st-new);
+}

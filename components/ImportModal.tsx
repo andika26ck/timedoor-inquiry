@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import type { ImportRow, RowStatus, Options, ParseResult, HeaderCheck } from "../lib/types"
+import type { ImportRow, RowStatus, Options, ParseResult, HeaderCheck, FieldIssue } from "../lib/types"
 import { validateRows, countRows, templateCsv, TEMPLATE_COLUMNS } from "../lib/importValidation"
 import { parseImportApi, importInquiriesApi } from "../lib/apiClient"
 import {
@@ -222,38 +222,36 @@ export default function ImportModal({
 
   const stepState = (i: number) => (i < step ? "done" : i === step ? "active" : "")
 
-  // Renders one editable cell with inline, per-cell error/warning detail.
-  function Cell({
-    r,
-    field,
-    col,
-    value,
-    placeholder,
-    onChange,
-  }: {
-    r: ImportRow
-    field: string
-    col: string
-    value: string
-    placeholder?: string
-    onChange: (v: string) => void
-  }) {
-    const fi = r.fieldIssues?.[field]
-    const cls =
-      "cell-input" + (fi ? (fi.level === "err" ? " cell-bad-err" : " cell-bad-warn") : "")
+  // Per-cell helpers: keep the same inline error/warning detail, but let each
+  // column render the RIGHT control (dropdown for Source/Country, date picker
+  // for Inquiry Date) — same UX as the Quick Add / New Inquiry forms.
+  const issueOf = (r: ImportRow, field: string): FieldIssue | undefined =>
+    r.fieldIssues?.[field]
+  const ctrlClass = (base: string, fi?: FieldIssue) =>
+    base + (fi ? (fi.level === "err" ? " cell-bad-err" : " cell-bad-warn") : "")
+
+  function FieldWrap({ fi, children }: { fi?: FieldIssue; children: React.ReactNode }) {
     return (
       <div className="cell-wrap">
-        <input
-          className={cls}
-          value={value}
-          placeholder={placeholder}
-          title={fi ? fi.msg : undefined}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        {children}
         {fi && <div className={"cell-msg " + fi.level}>{fi.msg}</div>}
       </div>
     )
   }
+
+  // Changing Country also fills the matching phone code, just like Quick Add.
+  function editCountry(id: string, name: string) {
+    const idx = rows.findIndex((r) => r.id === id)
+    if (idx < 0) return
+    const c = options.countries.find((x) => x.name === name)
+    setRawRows((prev) => {
+      const next = prev.slice()
+      next[idx] = { ...next[idx], Country: name, ...(c ? { "Phone Code": c.phoneCode } : {}) }
+      return next
+    })
+  }
+
+  const ISO = /^\d{4}-\d{2}-\d{2}$/
 
   return (
     <div className="overlay center" onClick={onClose}>
@@ -452,62 +450,103 @@ export default function ImportModal({
                   </tr>
                 </thead>
                 <tbody>
-                  {visible.map((r) => (
-                    <tr
-                      key={r.id}
-                      className={r.rowStatus === "err" ? "row-err" : r.rowStatus === "warn" ? "row-warn" : ""}
-                    >
-                      <td>
-                        <input
-                          type="checkbox"
-                          className="checkbox"
-                          checked={!!selected[r.id] && r.rowStatus !== "err"}
-                          disabled={r.rowStatus === "err"}
-                          onChange={() => setSelected((s) => ({ ...s, [r.id]: !s[r.id] }))}
-                        />
-                      </td>
-                      <td><span className="row-num">{r.sourceRow}</span></td>
-                      <td><RowStat status={r.rowStatus} /></td>
-                      <td>
-                        <Cell r={r} field="student" col="Student Name" value={r.studentName}
-                          placeholder={!r.studentName ? "Required" : ""}
-                          onChange={(v) => editCell(r.id, "Student Name", v)} />
-                      </td>
-                      <td>
-                        <Cell r={r} field="parent" col="Parent Name" value={r.parentName}
-                          placeholder={!r.parentName ? "Required" : ""}
-                          onChange={(v) => editCell(r.id, "Parent Name", v)} />
-                      </td>
-                      <td>
-                        <Cell r={r} field="source" col="Source" value={r.source}
-                          onChange={(v) => editCell(r.id, "Source", v)} />
-                      </td>
-                      <td>
-                        <Cell r={r} field="country" col="Country" value={r.country}
-                          placeholder={!r.country ? "Required" : ""}
-                          onChange={(v) => editCell(r.id, "Country", v)} />
-                      </td>
-                      <td>
-                        <Cell r={r} field="phone" col="Phone" value={(r.phoneCode + " " + r.phoneNumber).trim()}
-                          placeholder={!r.phoneNumber ? "+62 812..." : ""}
-                          onChange={(v) => {
-                            const val = v.trim()
-                            const m = val.match(/^(\+?\d+)\s+(.*)$/)
-                            if (m) {
-                              editCell(r.id, "Phone Code", m[1])
-                              editCell(r.id, "Phone Number", m[2])
-                            } else {
-                              editCell(r.id, "Phone Number", val)
-                            }
-                          }} />
-                      </td>
-                      <td>
-                        <Cell r={r} field="date" col="Inquiry Date" value={r.inquiryDate}
-                          placeholder={!r.inquiryDate ? "YYYY-MM-DD" : ""}
-                          onChange={(v) => editCell(r.id, "Inquiry Date", v)} />
-                      </td>
-                    </tr>
-                  ))}
+                  {visible.map((r) => {
+                    const fStudent = issueOf(r, "student")
+                    const fParent = issueOf(r, "parent")
+                    const fSource = issueOf(r, "source")
+                    const fCountry = issueOf(r, "country")
+                    const fPhone = issueOf(r, "phone")
+                    const fDate = issueOf(r, "date")
+                    const knownSource = options.sources.includes(r.source)
+                    const knownCountry = options.countries.some((c) => c.name === r.country)
+                    return (
+                      <tr
+                        key={r.id}
+                        className={r.rowStatus === "err" ? "row-err" : r.rowStatus === "warn" ? "row-warn" : ""}
+                      >
+                        <td>
+                          <input
+                            type="checkbox"
+                            className="checkbox"
+                            checked={!!selected[r.id] && r.rowStatus !== "err"}
+                            disabled={r.rowStatus === "err"}
+                            onChange={() => setSelected((s) => ({ ...s, [r.id]: !s[r.id] }))}
+                          />
+                        </td>
+                        <td><span className="row-num">{r.sourceRow}</span></td>
+                        <td><RowStat status={r.rowStatus} /></td>
+                        <td>
+                          <FieldWrap fi={fStudent}>
+                            <input className={ctrlClass("cell-input", fStudent)} value={r.studentName}
+                              placeholder={!r.studentName ? "Required" : ""} title={fStudent?.msg}
+                              onChange={(e) => editCell(r.id, "Student Name", e.target.value)} />
+                          </FieldWrap>
+                        </td>
+                        <td>
+                          <FieldWrap fi={fParent}>
+                            <input className={ctrlClass("cell-input", fParent)} value={r.parentName}
+                              placeholder={!r.parentName ? "Required" : ""} title={fParent?.msg}
+                              onChange={(e) => editCell(r.id, "Parent Name", e.target.value)} />
+                          </FieldWrap>
+                        </td>
+                        <td>
+                          <FieldWrap fi={fSource}>
+                            <select className={ctrlClass("cell-input cell-select", fSource)} value={r.source}
+                              title={fSource?.msg}
+                              onChange={(e) => editCell(r.id, "Source", e.target.value)}>
+                              <option value="">Select source…</option>
+                              {!knownSource && r.source && (
+                                <option value={r.source}>{r.source} (as typed)</option>
+                              )}
+                              {options.sources.map((s) => (
+                                <option key={s}>{s}</option>
+                              ))}
+                            </select>
+                          </FieldWrap>
+                        </td>
+                        <td>
+                          <FieldWrap fi={fCountry}>
+                            <select className={ctrlClass("cell-input cell-select", fCountry)} value={r.country}
+                              title={fCountry?.msg}
+                              onChange={(e) => editCountry(r.id, e.target.value)}>
+                              <option value="">Select country…</option>
+                              {!knownCountry && r.country && (
+                                <option value={r.country}>{r.country} (unknown)</option>
+                              )}
+                              {options.countries.map((c) => (
+                                <option key={c.name} value={c.name}>{c.flag} {c.name}</option>
+                              ))}
+                            </select>
+                          </FieldWrap>
+                        </td>
+                        <td>
+                          <FieldWrap fi={fPhone}>
+                            <input className={ctrlClass("cell-input", fPhone)}
+                              value={(r.phoneCode + " " + r.phoneNumber).trim()}
+                              placeholder={!r.phoneNumber ? "+62 812..." : ""} title={fPhone?.msg}
+                              onChange={(e) => {
+                                const val = e.target.value.trim()
+                                const m = val.match(/^(\+?\d+)\s+(.*)$/)
+                                if (m) {
+                                  editCell(r.id, "Phone Code", m[1])
+                                  editCell(r.id, "Phone Number", m[2])
+                                } else {
+                                  editCell(r.id, "Phone Number", val)
+                                }
+                              }} />
+                          </FieldWrap>
+                        </td>
+                        <td>
+                          <FieldWrap fi={fDate}>
+                            <input type="date" className={ctrlClass("cell-input cell-date", fDate)}
+                              value={ISO.test(r.inquiryDate) ? r.inquiryDate : ""}
+                              title={fDate?.msg}
+                              onChange={(e) => editCell(r.id, "Inquiry Date", e.target.value)} />
+                          </FieldWrap>
+                        </td>
+                      </tr>
+                    )
+                  })}
                   {visible.length === 0 && (
                     <tr>
                       <td colSpan={9} className="preview-empty">No rows match this filter.</td>

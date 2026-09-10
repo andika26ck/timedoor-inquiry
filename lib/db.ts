@@ -227,6 +227,44 @@ export async function updateStatus(
   return { ok: true, inquiry: rowToInquiry(db, row) }
 }
 
+export interface EditInquiryInput {
+  branch?: string
+  studentName: string
+  parentName: string
+  source: string
+  country: string
+  phoneCode: string
+  phoneNumber: string
+  socialMedia?: string
+  contactNote?: string
+  inquiryDate: string
+}
+
+// Full-details edit (does NOT change stage/reasonCode). Phone stays unique, but
+// the record is allowed to keep its own phone number.
+export async function updateInquiry(
+  id: string,
+  input: EditInquiryInput
+): Promise<{ ok: boolean; inquiry?: Inquiry; error?: string }> {
+  const { db } = await getStore()
+  const current = all(db, `SELECT * FROM inquiries WHERE id=?`, [id])[0]
+  if (!current) return { ok: false, error: "Inquiry not found" }
+  const key = normalizePhone(input.phoneCode, input.phoneNumber)
+  const clash = all(db, `SELECT 1 FROM inquiries WHERE phoneKey=? AND id<>? LIMIT 1`, [key, id])
+  if (clash.length > 0) return { ok: false, error: "Phone number already exists" }
+  db.run(
+    `UPDATE inquiries SET branch=?, studentName=?, parentName=?, source=?, country=?, phoneCode=?, phoneNumber=?, phoneKey=?, socialMedia=?, contactNote=?, inquiryDate=? WHERE id=?`,
+    [
+      input.branch ?? (current.branch as string), input.studentName, input.parentName, input.source,
+      input.country, input.phoneCode, input.phoneNumber, key, input.socialMedia ?? "",
+      input.contactNote ?? "", input.inquiryDate, id,
+    ] as never
+  )
+  persist(db)
+  const row = all(db, `SELECT * FROM inquiries WHERE id=?`, [id])[0]
+  return { ok: true, inquiry: rowToInquiry(db, row) }
+}
+
 export async function deleteInquiry(id: string): Promise<{ ok: boolean }> {
   const { db } = await getStore()
   db.run(`DELETE FROM history WHERE inquiryId=?`, [id] as never)

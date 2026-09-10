@@ -26,6 +26,8 @@ export default function NewInquiryDrawer({
   onViewExisting,
   initialForm,
   initialTouched,
+  mode = "create",
+  ignorePhoneKey,
 }: {
   options: Options
   existingPhones: string[]
@@ -34,7 +36,11 @@ export default function NewInquiryDrawer({
   onViewExisting?: () => void
   initialForm?: Partial<Form>
   initialTouched?: boolean
+  mode?: "create" | "edit"
+  // Normalized phone key of the record being edited, so it doesn't clash with itself.
+  ignorePhoneKey?: string
 }) {
+  const isEdit = mode === "edit"
   const c0 = options.countries[0]
   const [form, setForm] = React.useState<Form>({
     branch: options.branches[0] ?? "",
@@ -68,6 +74,7 @@ export default function NewInquiryDrawer({
 
   const dup =
     form.phoneNumber.trim().length > 0 &&
+    normalizePhone(form.phoneCode, form.phoneNumber) !== ignorePhoneKey &&
     existingPhones.includes(normalizePhone(form.phoneCode, form.phoneNumber))
   const phoneInvalid = form.phoneNumber.trim().length > 0 && !isValidPhone(form.phoneNumber)
 
@@ -103,8 +110,8 @@ export default function NewInquiryDrawer({
       <div className="drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-head">
           <div>
-            <div className="drawer-title">New Inquiry</div>
-            <div className="drawer-sub">Add a lead to HQ Training</div>
+            <div className="drawer-title">{isEdit ? "Edit Inquiry" : "New Inquiry"}</div>
+            <div className="drawer-sub">{isEdit ? "Update this lead’s details" : "Add a lead to HQ Training"}</div>
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="Close">
             <IconX size={18} />
@@ -238,11 +245,13 @@ export default function NewInquiryDrawer({
             />
           </div>
 
-          <div className="field">
-            <label>Initial Status</label>
-            <div><StatusChip stage="new" /></div>
-            <div className="hint">New inquiries always start as “New”.</div>
-          </div>
+          {!isEdit && (
+            <div className="field">
+              <label>Initial Status</label>
+              <div><StatusChip stage="new" /></div>
+              <div className="hint">New inquiries always start as “New”.</div>
+            </div>
+          )}
         </div>
 
         <div className="drawer-foot">
@@ -253,7 +262,7 @@ export default function NewInquiryDrawer({
             Cancel
           </button>
           <button className="btn btn-primary" onClick={submit} disabled={!valid}>
-            Save Inquiry
+            {isEdit ? "Save Changes" : "Save Inquiry"}
           </button>
         </div>
       </div>

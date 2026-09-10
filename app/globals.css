@@ -1638,3 +1638,61 @@ select.cell-input,
 .cell-date:hover {
   border-color: var(--st-new);
 }
+
+/* ===== Import: single-screen upload form (no wizard) ===== */
+.upload-form {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+}
+.up-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.up-num {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+.up-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.up-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.up-label {
+  font-weight: 650;
+  color: var(--text);
+  font-size: 15px;
+}
+.up-sub {
+  color: var(--text-2);
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+.up-main .branch-select {
+  margin-top: 8px;
+  width: 100%;
+}
+.up-main .tmpl-cols {
+  margin-top: 10px;
+}
+.up-main .dropzone {
+  margin-top: 10px;
+}

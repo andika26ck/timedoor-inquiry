@@ -13,8 +13,6 @@ import {
   IconFile,
 } from "./Icons"
 
-const STEPS = ["Download Template", "Select Branch", "Upload File", "Preview & Fix"]
-
 type Raw = Record<string, string>
 
 function toRaw(r: ImportRow): Raw {
@@ -56,13 +54,31 @@ function RowStat({ status }: { status: RowStatus }) {
   )
 }
 
+// IMPORTANT: defined at module scope (NOT inside ImportModal). If this lived
+// inside the component it would get a new identity on every render, causing
+// React to remount each <input>/<select> on every keystroke — which is exactly
+// what made typing lose focus after one character. Keeping it here fixes that.
+function CellWrap({ fi, children }: { fi?: FieldIssue; children: React.ReactNode }) {
+  return (
+    <div className="cell-wrap">
+      {children}
+      {fi && <div className={"cell-msg " + fi.level}>{fi.msg}</div>}
+    </div>
+  )
+}
+
+const ISO = /^\d{4}-\d{2}-\d{2}$/
+const issueOf = (r: ImportRow, field: string): FieldIssue | undefined => r.fieldIssues?.[field]
+const ctrlClass = (base: string, fi?: FieldIssue) =>
+  base + (fi ? (fi.level === "err" ? " cell-bad-err" : " cell-bad-warn") : "")
+
 export default function ImportModal({
   options,
   existingPhones,
   onClose,
   onImported,
-  // QA-only props to render a specific step statically
-  initialStep,
+  // QA-only props to render a specific state statically
+  initialPhase,
   initialParse,
   initialBranch,
 }: {
@@ -70,20 +86,20 @@ export default function ImportModal({
   existingPhones: string[]
   onClose: () => void
   onImported: (result: { imported: number; skipped: { studentName: string; reason: string }[] }) => void
-  initialStep?: number
+  initialPhase?: "form" | "preview"
   initialParse?: ParseResult
   initialBranch?: string
 }) {
-  const [step, setStep] = React.useState(initialStep ?? 0)
+  const [phase, setPhase] = React.useState<"form" | "preview">(
+    initialPhase ?? (initialParse?.ok ? "preview" : "form")
+  )
   const [branch, setBranch] = React.useState(initialBranch ?? options.branches[0] ?? "")
   const [fileName, setFileName] = React.useState(initialParse?.fileName ?? "")
   const [parsing, setParsing] = React.useState(false)
   const [templateError, setTemplateError] = React.useState<string | null>(
     initialParse && !initialParse.ok ? initialParse.templateError ?? "Invalid template" : null
   )
-  const [headerInfo, setHeaderInfo] = React.useState<HeaderCheck | null>(
-    initialParse?.header ?? null
-  )
+  const [headerInfo, setHeaderInfo] = React.useState<HeaderCheck | null>(initialParse?.header ?? null)
   const [rawRows, setRawRows] = React.useState<Raw[]>(
     initialParse?.ok ? initialParse.rows.map(toRaw) : []
   )
@@ -113,7 +129,6 @@ export default function ImportModal({
   )
 
   React.useEffect(() => {
-    // default-select every row that is not an error
     setSelected((prev) => {
       const next: Record<string, boolean> = {}
       for (const r of rows) next[r.id] = prev[r.id] ?? r.rowStatus !== "err"
@@ -177,7 +192,7 @@ export default function ImportModal({
         return
       }
       setRawRows(res.rows.map(toRaw))
-      setStep(3)
+      setPhase("preview")
     } catch (e) {
       setTemplateError("Failed to read the file. Please try again.")
     } finally {
@@ -188,6 +203,8 @@ export default function ImportModal({
   function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (f) handleFile(f)
+    // allow re-selecting the same file name after a failed attempt
+    e.target.value = ""
   }
 
   function onDrop(e: React.DragEvent) {
@@ -207,6 +224,18 @@ export default function ImportModal({
     })
   }
 
+  // Changing Country also fills the matching phone code, just like Quick Add.
+  function editCountry(id: string, name: string) {
+    const idx = rows.findIndex((r) => r.id === id)
+    if (idx < 0) return
+    const c = options.countries.find((x) => x.name === name)
+    setRawRows((prev) => {
+      const next = prev.slice()
+      next[idx] = { ...next[idx], Country: name, ...(c ? { "Phone Code": c.phoneCode } : {}) }
+      return next
+    })
+  }
+
   async function doImport() {
     const toImport = rows.filter((r) => selected[r.id] && r.rowStatus !== "err")
     if (toImport.length === 0) return
@@ -220,39 +249,6 @@ export default function ImportModal({
     }
   }
 
-  const stepState = (i: number) => (i < step ? "done" : i === step ? "active" : "")
-
-  // Per-cell helpers: keep the same inline error/warning detail, but let each
-  // column render the RIGHT control (dropdown for Source/Country, date picker
-  // for Inquiry Date) — same UX as the Quick Add / New Inquiry forms.
-  const issueOf = (r: ImportRow, field: string): FieldIssue | undefined =>
-    r.fieldIssues?.[field]
-  const ctrlClass = (base: string, fi?: FieldIssue) =>
-    base + (fi ? (fi.level === "err" ? " cell-bad-err" : " cell-bad-warn") : "")
-
-  function FieldWrap({ fi, children }: { fi?: FieldIssue; children: React.ReactNode }) {
-    return (
-      <div className="cell-wrap">
-        {children}
-        {fi && <div className={"cell-msg " + fi.level}>{fi.msg}</div>}
-      </div>
-    )
-  }
-
-  // Changing Country also fills the matching phone code, just like Quick Add.
-  function editCountry(id: string, name: string) {
-    const idx = rows.findIndex((r) => r.id === id)
-    if (idx < 0) return
-    const c = options.countries.find((x) => x.name === name)
-    setRawRows((prev) => {
-      const next = prev.slice()
-      next[idx] = { ...next[idx], Country: name, ...(c ? { "Phone Code": c.phoneCode } : {}) }
-      return next
-    })
-  }
-
-  const ISO = /^\d{4}-\d{2}-\d{2}$/
-
   return (
     <div className="overlay center" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -263,125 +259,108 @@ export default function ImportModal({
           </button>
         </div>
 
-        <div className="stepper">
-          {STEPS.map((label, i) => (
-            <React.Fragment key={label}>
-              <div className={"step " + stepState(i)}>
-                <span className="num">{i < step ? "\u2713" : i + 1}</span>
-                {label}
-              </div>
-              {i < STEPS.length - 1 && <span className="step-sep" />}
-            </React.Fragment>
-          ))}
-        </div>
-
-        {/* STEP 1 - Download Template */}
-        {step === 0 && (
-          <div className="wizard-body">
-            <div className="tmpl-card">
-              <div className="tmpl-head">
-                <IconFile size={20} />
-                <div>
-                  <div className="tmpl-title">Download the inquiry template</div>
-                  <div className="tmpl-sub">
-                    Fill your data in this exact format, then upload it in step 3.
+        {/* ---------- FORM (single screen, no wizard) ---------- */}
+        {phase === "form" && !result && (
+          <div className="upload-form">
+            <div className="up-step">
+              <span className="up-num">1</span>
+              <div className="up-main">
+                <div className="up-row">
+                  <div>
+                    <div className="up-label">Download Form Inquiry Template</div>
+                    <div className="up-sub">Fill your data in this exact format, then upload it below.</div>
                   </div>
+                  <button className="btn btn-outline" onClick={downloadTemplate}>
+                    <IconDownload size={16} /> Download Template
+                  </button>
                 </div>
-                <button className="btn btn-outline" onClick={downloadTemplate}>
-                  <IconDownload size={16} /> Download Template
-                </button>
-              </div>
-              <div className="tmpl-cols">
-                {TEMPLATE_COLUMNS.map((c) => (
-                  <span key={c} className="tmpl-col">
-                    {c}
-                  </span>
-                ))}
-              </div>
-              <div className="tmpl-note">
-                Branch is chosen in the next step, so it is not a column in the file.
+                <div className="tmpl-cols">
+                  {TEMPLATE_COLUMNS.map((c) => (
+                    <span key={c} className="tmpl-col">{c}</span>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* STEP 2 - Select Branch */}
-        {step === 1 && (
-          <div className="wizard-body">
-            <label className="field-label">Select branch for this import</label>
-            <select
-              className="select branch-select"
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-            >
-              {options.branches.map((b) => (
-                <option key={b}>{b}</option>
-              ))}
-            </select>
-            <div className="tmpl-note">All rows in this file will be imported into this branch.</div>
-          </div>
-        )}
-
-        {/* STEP 3 - Upload File */}
-        {step === 2 && (
-          <div className="wizard-body">
-            <div
-              className={"dropzone" + (dragging ? " drag" : "")}
-              onDragOver={(e) => {
-                e.preventDefault()
-                setDragging(true)
-              }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={onDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                style={{ display: "none" }}
-                onChange={onInputChange}
-              />
-              <div className="drop-ico">
-                <IconUpload size={26} />
+            <div className="up-step">
+              <span className="up-num">2</span>
+              <div className="up-main">
+                <div className="up-label">Select Branch</div>
+                <select
+                  className="select branch-select"
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                >
+                  {options.branches.map((b) => (
+                    <option key={b}>{b}</option>
+                  ))}
+                </select>
+                <div className="up-sub">All rows in this file will be imported into this branch.</div>
               </div>
-              {parsing ? (
-                <div className="drop-hint">Reading {fileName}…</div>
-              ) : (
-                <>
-                  <div className="drop-hint">Tap here or drag a file filled with inquiry data</div>
-                  <div className="drop-sub">Accepted: .xlsx or .csv (based on the template)</div>
-                </>
-              )}
-              {fileName && !parsing && <div className="file-chip"><IconFile size={13} /> {fileName}</div>}
             </div>
 
-            {templateError && (
-              <div className="template-error">
-                <div className="template-error-title">
-                  <IconAlert size={16} /> This file can’t be previewed yet
+            <div className="up-step">
+              <span className="up-num">3</span>
+              <div className="up-main">
+                <div className="up-label">Upload Inquiry Data</div>
+                <div
+                  className={"dropzone" + (dragging ? " drag" : "")}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    setDragging(true)
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={onDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    style={{ display: "none" }}
+                    onChange={onInputChange}
+                  />
+                  <div className="drop-ico">
+                    <IconUpload size={26} />
+                  </div>
+                  {parsing ? (
+                    <div className="drop-hint">Reading {fileName}…</div>
+                  ) : (
+                    <>
+                      <div className="drop-hint">Tap here or drag a file filled with inquiry data</div>
+                      <div className="drop-sub">Accepted: .xlsx or .csv (based on the template)</div>
+                    </>
+                  )}
+                  {fileName && !parsing && (
+                    <div className="file-chip"><IconFile size={13} /> {fileName}</div>
+                  )}
                 </div>
-                <div className="template-error-body">{templateError}</div>
-                {headerInfo && (headerInfo.missing.length > 0 || headerInfo.extra.length > 0) && (
-                  <div className="template-error-body">
-                    {headerInfo.missing.length > 0 && (
-                      <div>Missing columns: <b>{headerInfo.missing.join(", ")}</b></div>
-                    )}
-                    {headerInfo.extra.length > 0 && (
-                      <div>Unexpected columns: <b>{headerInfo.extra.join(", ")}</b></div>
+
+                {templateError && (
+                  <div className="template-error">
+                    <div className="template-error-title">
+                      <IconAlert size={16} /> This file can’t be previewed yet
+                    </div>
+                    <div className="template-error-body">{templateError}</div>
+                    {headerInfo && (headerInfo.missing.length > 0 || headerInfo.extra.length > 0) && (
+                      <div className="template-error-body">
+                        {headerInfo.missing.length > 0 && (
+                          <div>Missing columns: <b>{headerInfo.missing.join(", ")}</b></div>
+                        )}
+                        {headerInfo.extra.length > 0 && (
+                          <div>Unexpected columns: <b>{headerInfo.extra.join(", ")}</b></div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
-                <button className="btn btn-ghost sm" onClick={() => setStep(0)}>
-                  <IconDownload size={14} /> Go to template
-                </button>
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* STEP 4 - Preview & Fix */}
-        {step === 3 && !result && (
+        {/* ---------- PREVIEW ---------- */}
+        {phase === "preview" && !result && (
           <>
             <div className="summary-bar">
               <span className="summary-total">
@@ -476,21 +455,21 @@ export default function ImportModal({
                         <td><span className="row-num">{r.sourceRow}</span></td>
                         <td><RowStat status={r.rowStatus} /></td>
                         <td>
-                          <FieldWrap fi={fStudent}>
+                          <CellWrap fi={fStudent}>
                             <input className={ctrlClass("cell-input", fStudent)} value={r.studentName}
                               placeholder={!r.studentName ? "Required" : ""} title={fStudent?.msg}
                               onChange={(e) => editCell(r.id, "Student Name", e.target.value)} />
-                          </FieldWrap>
+                          </CellWrap>
                         </td>
                         <td>
-                          <FieldWrap fi={fParent}>
+                          <CellWrap fi={fParent}>
                             <input className={ctrlClass("cell-input", fParent)} value={r.parentName}
                               placeholder={!r.parentName ? "Required" : ""} title={fParent?.msg}
                               onChange={(e) => editCell(r.id, "Parent Name", e.target.value)} />
-                          </FieldWrap>
+                          </CellWrap>
                         </td>
                         <td>
-                          <FieldWrap fi={fSource}>
+                          <CellWrap fi={fSource}>
                             <select className={ctrlClass("cell-input cell-select", fSource)} value={r.source}
                               title={fSource?.msg}
                               onChange={(e) => editCell(r.id, "Source", e.target.value)}>
@@ -502,10 +481,10 @@ export default function ImportModal({
                                 <option key={s}>{s}</option>
                               ))}
                             </select>
-                          </FieldWrap>
+                          </CellWrap>
                         </td>
                         <td>
-                          <FieldWrap fi={fCountry}>
+                          <CellWrap fi={fCountry}>
                             <select className={ctrlClass("cell-input cell-select", fCountry)} value={r.country}
                               title={fCountry?.msg}
                               onChange={(e) => editCountry(r.id, e.target.value)}>
@@ -517,10 +496,10 @@ export default function ImportModal({
                                 <option key={c.name} value={c.name}>{c.flag} {c.name}</option>
                               ))}
                             </select>
-                          </FieldWrap>
+                          </CellWrap>
                         </td>
                         <td>
-                          <FieldWrap fi={fPhone}>
+                          <CellWrap fi={fPhone}>
                             <input className={ctrlClass("cell-input", fPhone)}
                               value={(r.phoneCode + " " + r.phoneNumber).trim()}
                               placeholder={!r.phoneNumber ? "+62 812..." : ""} title={fPhone?.msg}
@@ -534,15 +513,15 @@ export default function ImportModal({
                                   editCell(r.id, "Phone Number", val)
                                 }
                               }} />
-                          </FieldWrap>
+                          </CellWrap>
                         </td>
                         <td>
-                          <FieldWrap fi={fDate}>
+                          <CellWrap fi={fDate}>
                             <input type="date" className={ctrlClass("cell-input cell-date", fDate)}
                               value={ISO.test(r.inquiryDate) ? r.inquiryDate : ""}
                               title={fDate?.msg}
                               onChange={(e) => editCell(r.id, "Inquiry Date", e.target.value)} />
-                          </FieldWrap>
+                          </CellWrap>
                         </td>
                       </tr>
                     )
@@ -558,9 +537,9 @@ export default function ImportModal({
           </>
         )}
 
-        {/* Result summary */}
+        {/* ---------- RESULT ---------- */}
         {result && (
-          <div className="wizard-body">
+          <div className="upload-form">
             <div className="import-done">
               <div className="import-done-ico"><IconCheck size={26} /></div>
               <div className="tmpl-title">Imported {result.imported} inquiries into {branch}</div>
@@ -580,36 +559,23 @@ export default function ImportModal({
           </div>
         )}
 
-        {/* FOOTER */}
+        {/* ---------- FOOTER ---------- */}
         <div className="modal-foot">
           {result ? (
             <button className="btn btn-primary" onClick={onClose}>Done</button>
-          ) : (
+          ) : phase === "preview" ? (
             <>
-              {step === 3 && (
-                <button className="btn btn-ghost left" onClick={downloadErrorReport} disabled={!hasIssues}>
-                  <IconDownload size={16} /> Download error report
-                </button>
-              )}
-              {step > 0 && step < 3 && (
-                <button className="btn btn-ghost" onClick={() => setStep((s) => s - 1)}>Back</button>
-              )}
-              {step === 3 && (
-                <button className="btn btn-ghost" onClick={() => setStep(2)}>Back</button>
-              )}
+              <button className="btn btn-ghost left" onClick={downloadErrorReport} disabled={!hasIssues}>
+                <IconDownload size={16} /> Download error report
+              </button>
+              <button className="btn btn-ghost" onClick={() => setPhase("form")}>Back</button>
               <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-              {step === 0 && (
-                <button className="btn btn-primary" onClick={() => setStep(1)}>Next</button>
-              )}
-              {step === 1 && (
-                <button className="btn btn-primary" onClick={() => setStep(2)} disabled={!branch}>Next</button>
-              )}
-              {step === 3 && (
-                <button className="btn btn-primary" disabled={selectedCount === 0 || importing} onClick={doImport}>
-                  <IconUpload size={16} /> {importing ? "Importing\u2026" : `Import ${selectedCount} selected`}
-                </button>
-              )}
+              <button className="btn btn-primary" disabled={selectedCount === 0 || importing} onClick={doImport}>
+                <IconUpload size={16} /> {importing ? "Importing\u2026" : `Import ${selectedCount} selected`}
+              </button>
             </>
+          ) : (
+            <button className="btn btn-ghost" onClick={onClose}>Close</button>
           )}
         </div>
       </div>

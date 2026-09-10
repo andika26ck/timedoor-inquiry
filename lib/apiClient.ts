@@ -40,6 +40,29 @@ export async function updateStatusApi(
   return res.json()
 }
 
+export async function updateInquiryApi(
+  id: string,
+  input: {
+    branch?: string
+    studentName: string
+    parentName: string
+    source: string
+    country: string
+    phoneCode: string
+    phoneNumber: string
+    socialMedia?: string
+    contactNote?: string
+    inquiryDate: string
+  }
+): Promise<{ ok: boolean; inquiry?: Inquiry; error?: string }> {
+  const res = await fetch(`/api/inquiries/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mode: "edit", ...input }),
+  })
+  return res.json()
+}
+
 export async function deleteInquiryApi(id: string): Promise<void> {
   await fetch(`/api/inquiries/${id}`, { method: "DELETE" })
 }

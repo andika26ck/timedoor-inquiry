@@ -7,6 +7,7 @@ import {
   fetchInquiries,
   createInquiryApi,
   updateStatusApi,
+  updateInquiryApi,
   deleteInquiryApi,
 } from "../lib/apiClient"
 import InquiryTable from "./InquiryTable"
@@ -27,6 +28,7 @@ export default function InquiryApp() {
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
   const [pickerFor, setPickerFor] = React.useState<Inquiry | null>(null)
   const [detailFor, setDetailFor] = React.useState<Inquiry | null>(null)
+  const [editFor, setEditFor] = React.useState<Inquiry | null>(null)
   const [drawerOpen, setDrawerOpen] = React.useState(false)
   const [importOpen, setImportOpen] = React.useState(false)
 
@@ -125,6 +127,32 @@ export default function InquiryApp() {
     }
     if (res.inquiry) setList((l) => [res.inquiry!, ...l])
     setDrawerOpen(false)
+  }
+
+  async function onEditSave(f: NewInquiryForm) {
+    if (!editFor) return
+    const res = await updateInquiryApi(editFor.id, {
+      branch: f.branch,
+      studentName: f.studentName,
+      parentName: f.parentName,
+      source: f.source,
+      country: f.country,
+      phoneCode: f.phoneCode,
+      phoneNumber: f.phoneNumber,
+      socialMedia: f.socialMedia,
+      contactNote: f.contactNote,
+      inquiryDate: f.inquiryDate,
+    })
+    if (!res.ok) {
+      setToast(res.error || "Could not update inquiry")
+      return
+    }
+    if (res.inquiry) {
+      const updated = res.inquiry
+      setList((l) => l.map((i) => (i.id === updated.id ? updated : i)))
+    }
+    setEditFor(null)
+    setToast("Inquiry updated")
   }
 
   async function applyStatus(target: Inquiry, stage: StageKey, reason: string | null, note: string) {
@@ -231,7 +259,7 @@ export default function InquiryApp() {
         }}
         onEdit={(inq) => {
           setOpenMenuId(null)
-          setDetailFor(inq)
+          setEditFor(inq)
         }}
         onChangeStatus={(inq) => {
           setOpenMenuId(null)
@@ -258,6 +286,29 @@ export default function InquiryApp() {
           existingPhones={existingPhones}
           onClose={() => setDrawerOpen(false)}
           onSave={onDrawerSave}
+        />
+      )}
+
+      {editFor && (
+        <NewInquiryDrawer
+          options={options}
+          existingPhones={existingPhones}
+          mode="edit"
+          ignorePhoneKey={normalizePhone(editFor.phoneCode, editFor.phoneNumber)}
+          initialForm={{
+            branch: editFor.branch,
+            studentName: editFor.studentName,
+            parentName: editFor.parentName,
+            source: editFor.source,
+            country: editFor.country,
+            phoneCode: editFor.phoneCode,
+            phoneNumber: editFor.phoneNumber,
+            inquiryDate: editFor.inquiryDate,
+            socialMedia: editFor.socialMedia,
+            contactNote: editFor.contactNote,
+          }}
+          onClose={() => setEditFor(null)}
+          onSave={onEditSave}
         />
       )}
 
